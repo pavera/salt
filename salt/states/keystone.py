@@ -155,21 +155,23 @@ def user_present(name,
             ret['comment'] = 'User "{0}" has been updated'.format(name)
             ret['changes']['Password'] = 'Updated'
         if roles:
-            for tenant_role in roles[0].keys():
-                args = dict({'user_name': name, 'tenant_name':
-                             tenant_role, 'profile': profile}, **connection_args)
-                tenant_roles = __salt__['keystone.user_role_list'](**args)
-                for role in roles[0][tenant_role]:
-                    if role not in tenant_roles:
-                        addargs = dict({'user': name, 'role': role,
-                                        'tenant': tenant_role,
-                                        'profile': profile},
-                                       **connection_args)
-                        newrole = __salt__['keystone.user_role_add'](**addargs)
-                        if 'roles' in ret['changes']:
-                            ret['changes']['roles'].append(newrole)
-                        else:
-                            ret['changes']['roles'] = [newrole]
+            for tenant in roles:
+                for tenant_name, tenant_roles in tenant.iteritems():
+
+                    args = dict({'user_name': name, 'tenant_name':
+                                 tenant_name, 'profile': profile}, **connection_args)
+                    current_tenant_roles = __salt__['keystone.user_role_list'](**args)
+                    for role in tenant_roles:
+                        if role not in current_tenant_roles:
+                            addargs = dict({'user': name, 'role': role,
+                                            'tenant': tenant_name,
+                                            'profile': profile},
+                                           **connection_args)
+                            newrole = __salt__['keystone.user_role_add'](**addargs)
+                            if 'roles' in ret['changes']:
+                                ret['changes']['roles'].append(newrole)
+                            else:
+                                ret['changes']['roles'] = [newrole]
     else:
         # Create that user!
         __salt__['keystone.user_create'](name=name,
@@ -180,13 +182,14 @@ def user_present(name,
                                          profile=profile,
                                          **connection_args)
         if roles:
-            for tenant_role in roles[0].keys():
-                for role in roles[0][tenant_role]:
-                    __salt__['keystone.user_role_add'](user=name,
-                                                       role=role,
-                                                       tenant_role=tenant_role,
-                                                       profile=profile,
-                                                       **connection_args)
+            for tenant in roles:
+                for tenant_name, tenant_roles in tenant.iteritems():
+                    for role in tenant_roles:
+                        __salt__['keystone.user_role_add'](user=name,
+                                                           role=role,
+                                                           tenant=tenant_name,
+                                                           profile=profile,
+                                                           **connection_args)
         ret['comment'] = 'Keystone user {0} has been added'.format(name)
         ret['changes']['User'] = 'Created'
 
